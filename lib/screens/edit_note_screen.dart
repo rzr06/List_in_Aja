@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:iconsax/iconsax.dart';
 import '../services/database_service.dart';
 import '../models/shopping_note.dart';
 
 class EditNoteScreen extends StatefulWidget {
   final ShoppingNote note;
-  
-  const EditNoteScreen({
-    super.key,
-    required this.note,
-  });
+
+  const EditNoteScreen({super.key, required this.note});
 
   @override
   State<EditNoteScreen> createState() => _EditNoteScreenState();
@@ -17,11 +15,10 @@ class EditNoteScreen extends StatefulWidget {
 
 class _EditNoteScreenState extends State<EditNoteScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _titleController;
-  late final TextEditingController _descController;
+  late TextEditingController _titleController;
+  late TextEditingController _descController;
   late DateTime? _selectedDate;
   late List<String> _sharedWith;
-  late List<bool> _checkedItems;
   bool _isLoading = false;
 
   @override
@@ -31,7 +28,6 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     _descController = TextEditingController(text: widget.note.description);
     _selectedDate = widget.note.reminder;
     _sharedWith = List.from(widget.note.sharedWith);
-    _checkedItems = List.from(widget.note.checkedItems);
   }
 
   @override
@@ -41,49 +37,19 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
-    );
-    
-    if (pickedDate == null) return;
-
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_selectedDate ?? DateTime.now()),
-    );
-
-    if (pickedTime != null) {
-      setState(() => _selectedDate = DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        pickedTime.hour,
-        pickedTime.minute,
-      ));
-    }
-  }
-
   Future<void> _submitNote() async {
-    if (!_formKey.currentState!.validate()) return;
-    
+    if (!_formKey.currentState!.validate() || _isLoading) return;
+
     setState(() => _isLoading = true);
-    
+
     try {
-      // Sesuaikan checklist dengan deskripsi terbaru
       final lines = _descController.text.trim().split('\n');
-      List<bool> newCheckedItems = List.from(_checkedItems);
-      
-      // Update panjang checklist
+      List<bool> newCheckedItems = List.from(widget.note.checkedItems);
+
       if (newCheckedItems.length > lines.length) {
         newCheckedItems = newCheckedItems.sublist(0, lines.length);
       } else if (newCheckedItems.length < lines.length) {
-        newCheckedItems.addAll(
-          List.filled(lines.length - newCheckedItems.length, false),
-        );
+        newCheckedItems.addAll(List.filled(lines.length - newCheckedItems.length, false));
       }
 
       await Provider.of<DatabaseService>(context, listen: false).updateNote(
@@ -92,25 +58,18 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         description: _descController.text.trim(),
         reminder: _selectedDate,
         sharedWith: _sharedWith,
-        checkedItems: newCheckedItems, 
+        checkedItems: newCheckedItems,
       );
 
       if (!mounted) return;
       Navigator.pop(context);
-      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Catatan berhasil diperbarui'),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('Catatan berhasil diperbarui'), backgroundColor: Colors.green),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -120,103 +79,143 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Catatan'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _isLoading ? null : _submitNote,
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'Judul Catatan',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.title),
-                ),
-                validator: (value) => 
-                  value!.isEmpty ? 'Harus diisi' : null,
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _descController,
-                decoration: InputDecoration(
-                  labelText: 'Daftar Barang (Tekan Enter untuk item baru)',
-                  alignLabelWithHint: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.list),
-                  hintText: 'Contoh:\nSusu Ultra\nTelur 1kg\nTepung Terigu',
-                ),
-                maxLines: 5,
-                keyboardType: TextInputType.multiline,
-              ),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: const Icon(Icons.notifications),
-                title: const Text('Pengingat'),
-                subtitle: Text(_selectedDate != null 
-                  ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}' 
-                  : 'Tidak ada pengingat'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_selectedDate != null)
-                      IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() => _selectedDate = null),
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.calendar_today),
-                      onPressed: () => _selectDate(context),
+      appBar: AppBar(title: const Text('Edit Catatan')),
+      body: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildSectionCard(
+                    child: TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(labelText: 'Judul Catatan', prefixIcon: Icon(Iconsax.note)),
+                      validator: (v) => v!.isEmpty ? 'Judul tidak boleh kosong' : null,
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
-              const Text('Bagikan ke:'),
-              ..._sharedWith.map((email) => ListTile(
-                title: Text(email),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => setState(() => _sharedWith.remove(email)),
-                ),
-              )),
-              TextButton.icon(
-                icon: const Icon(Icons.person_add),
-                label: const Text('Tambah Orang'),
-                onPressed: () => _showShareDialog(context),
-              ),
-              const SizedBox(height: 24),
-              if (_isLoading)
-                const LinearProgressIndicator()
-              else
-                FilledButton.icon(
-                  icon: const Icon(Icons.save),
-                  label: const Text('Simpan Perubahan'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: _submitNote,
-                ),
-            ],
-          ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    child: TextFormField(
+                      controller: _descController,
+                      decoration: const InputDecoration(
+                        labelText: 'Daftar Barang',
+                        hintText: 'Susu\nRoti\nTelur (Enter untuk item baru)',
+                        prefixIcon: Icon(Iconsax.task_square),
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(child: _buildReminderTile()),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(child: _buildShareSection()),
+                ],
+              ),
+            ),
+            _buildBottomBar(),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildSectionCard({required Widget child}) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildReminderTile() {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Iconsax.clock, size: 28),
+      title: const Text('Pengingat', style: TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(
+        _selectedDate != null
+            ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} - ${_selectedDate!.hour}:${_selectedDate!.minute.toString().padLeft(2, '0')}'
+            : 'Tidak ada pengingat',
+        style: TextStyle(color: _selectedDate != null ? Theme.of(context).primaryColor : Colors.grey),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_selectedDate != null)
+            IconButton(icon: const Icon(Iconsax.trash, color: Colors.red), onPressed: () => setState(() => _selectedDate = null)),
+          IconButton(icon: const Icon(Iconsax.calendar_add), onPressed: () => _selectDateTime(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Iconsax.user_add, size: 28),
+          title: Text('Bagikan Dengan', style: TextStyle(fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ..._sharedWith.map((email) => Chip(
+                  label: Text(email),
+                  onDeleted: () => setState(() => _sharedWith.remove(email)),
+                )),
+            ActionChip(
+              avatar: const Icon(Iconsax.add),
+              label: const Text('Tambah'),
+              onPressed: () => _showShareDialog(context),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Iconsax.save_2),
+                label: const Text('Simpan Perubahan'),
+                onPressed: _submitNote,
+              ),
+            ),
+    );
+  }
+
+  Future<void> _selectDateTime(BuildContext context) async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (pickedDate == null) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedDate ?? DateTime.now()),
+    );
+    if (pickedTime == null) return;
+
+    setState(() {
+      _selectedDate = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+    });
   }
 
   void _showShareDialog(BuildContext context) {
@@ -227,20 +226,17 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         title: const Text('Bagikan Catatan'),
         content: TextField(
           controller: emailController,
-          decoration: const InputDecoration(
-            labelText: 'Email Penerima',
-            hintText: 'user@example.com',
-          ),
+          decoration: const InputDecoration(labelText: 'Email Penerima'),
+          keyboardType: TextInputType.emailAddress,
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           FilledButton(
             onPressed: () {
-              if (emailController.text.contains('@')) {
-                setState(() => _sharedWith.add(emailController.text.trim()));
+              if (emailController.text.contains('@') && !_sharedWith.contains(emailController.text.trim())) {
+                setState(() {
+                  _sharedWith.add(emailController.text.trim());
+                });
                 Navigator.pop(context);
               }
             },

@@ -49,7 +49,7 @@ class NotificationService {
 
     // Pastikan waktu tidak di masa lalu
     if (scheduledDate.isBefore(tz.TZDateTime.now(_localLocation))) {
-      throw Exception('Waktu pengingat tidak boleh di masa lalu');
+      throw ('Waktu pengingat tidak boleh di masa lalu');
     }
 
     await _notificationsPlugin.zonedSchedule(

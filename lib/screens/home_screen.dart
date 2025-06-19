@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:iconsax/iconsax.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/shopping_note.dart';
-import '../widgets/note_item.dart';
+import '../widgets/note_item.dart'; // Pastikan import ini benar
 import 'add_note_screen.dart';
 import 'auth_screen.dart';
 
@@ -21,73 +23,59 @@ class HomeScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 8),
-              Image.asset(
-                'assets/images/LogoOnly.png',
-                height: 40,
-                width: 40,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 12),
-              Image.asset(
-                'assets/images/TextOnly.png',
-                height: 100,
-                width: 100,
-                fit: BoxFit.contain,
-              ),
-            ],
+          title: Image.asset(
+            'assets/images/TextOnly.png',
+            width: 120,
+            color: Theme.of(context).primaryColor,
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.logout),
+              icon: const Icon(Iconsax.logout),
               onPressed: () async {
                 await authService.signOut();
                 if (!context.mounted) return;
-                Navigator.pushReplacement(
+                Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (_) => const AuthScreen()),
+                  (route) => false,
                 );
               },
             ),
           ],
           bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.person), text: 'Milik Saya'),
-              Tab(icon: Icon(Icons.group), text: 'Dibagikan'), 
-            ],
+            tabs: [Tab(text: 'Catatan Saya'), Tab(text: 'Dibagikan')],
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
-          icon: const Icon(Icons.add),
+          icon: const Icon(Iconsax.add),
           label: const Text('Tambah'),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddNoteScreen()),
-          ),
-        ),
-        body: userId == null || userEmail == null
-            ? _buildNotLoggedIn(context)
-            : TabBarView(
-                children: [
-                  _buildNotesList(
-                    context,
-                    stream: dbService.getNotes(userId),
-                    userId: userId,
-                    userEmail: userEmail,
-                    isOwner: true,
-                  ),
-                  _buildNotesList(
-                    context,
-                    stream: dbService.getSharedNotes(userEmail),
-                    userId: userId,
-                    userEmail: userEmail,
-                    isOwner: false,
-                  ),
-                ],
+          onPressed:
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddNoteScreen()),
               ),
+        ).animate().slideY(begin: 2, duration: 400.ms, curve: Curves.easeOut),
+        body:
+            userId == null || userEmail == null
+                ? _buildNotLoggedIn(context)
+                : TabBarView(
+                  children: [
+                    _buildNotesList(
+                      context,
+                      stream: dbService.getNotes(userId),
+                      userId: userId,
+                      userEmail: userEmail,
+                      isOwner: true,
+                    ),
+                    _buildNotesList(
+                      context,
+                      stream: dbService.getSharedNotes(userEmail),
+                      userId: userId,
+                      userEmail: userEmail,
+                      isOwner: false,
+                    ),
+                  ],
+                ),
       ),
     );
   }
@@ -97,7 +85,7 @@ class HomeScreen extends StatelessWidget {
     required Stream<List<ShoppingNote>> stream,
     required String? userId,
     required bool isOwner,
-    required String? userEmail, 
+    required String? userEmail,
   }) {
     final dbService = Provider.of<DatabaseService>(context, listen: false);
 
@@ -107,88 +95,74 @@ class HomeScreen extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(
+            child: Text('Terjadi kesalahan: Silahkan coba kembali nanti'),
+          );
         }
 
         final notes = snapshot.data ?? [];
-        
-        return notes.isEmpty
-            ? _buildEmptyState(isOwner)
-            : RefreshIndicator(
-              onRefresh: () async {
-                try {
-                  if (isOwner) {
-                    await dbService.refreshNotes(userId!);
-                  } else {
-                    if (userEmail != null) {
-                      await dbService.refreshSharedNotes(userEmail);
-                    }
-                  }
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Gagal refresh: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: notes.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: NoteItem(
+
+        if (notes.isEmpty) {
+          return _buildEmptyState(isOwner);
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            isOwner
+                ? await dbService.refreshNotes(userId!)
+                : await dbService.refreshSharedNotes(userEmail!);
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: notes.length,
+            itemBuilder:
+                (_, i) => NoteItem(
+                      // Widget ini sudah diubah
                       note: notes[i],
                       canEdit: isOwner,
                       onDelete: () => dbService.deleteNote(notes[i].id),
-                    ),
-                  ),
-                ),
-              );
+                    )
+                    .animate()
+                    .fadeIn(duration: 300.ms)
+                    .slideX(begin: -0.1, delay: (100 * i).ms),
+          ),
+        );
       },
     );
   }
 
   Widget _buildEmptyState(bool isOwner) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isOwner ? Icons.shopping_cart_outlined : Icons.group_outlined,
-            size: 80,
-            color: Colors.teal.shade200,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            isOwner 
-              ? 'Belum ada catatan belanja ' 
-              : 'Tidak ada catatan yang dibagikan',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.teal.shade600,
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isOwner ? Iconsax.note_add : Iconsax.people,
+              size: 100,
+              color: Colors.grey.shade300,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            isOwner
-              ? 'Tekan tombol + di bawah untuk membuat baru'
-              : 'Catatan yang dibagikan dengan Anda akan muncul di sini',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
+            const SizedBox(height: 24),
+            Text(
+              isOwner
+                  ? 'Buat Catatan Pertamamu'
+                  : 'Belum Ada Catatan Dibagikan',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+            const SizedBox(height: 12),
+            Text(
+              isOwner
+                  ? 'Semua catatan belanjamu akan muncul di sini. Tekan tombol "+" untuk memulai.'
+                  : 'Saat seseorang membagikan catatan denganmu, catatan itu akan muncul di sini.',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ).animate().fadeIn().scale(begin: const Offset(0.8, 0.8)),
     );
   }
 
@@ -197,13 +171,14 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('Anda belum login'),
+          const Text('Anda belum login.'),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const AuthScreen()),
-            ),
+            onPressed:
+                () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AuthScreen()),
+                ),
             child: const Text('Login Sekarang'),
           ),
         ],
