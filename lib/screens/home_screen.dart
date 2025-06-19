@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
         appBar: AppBar(
           title: Image.asset(
             'assets/images/TextOnly.png',
-            width: 120,
+            width: 100,
             color: Theme.of(context).primaryColor,
           ),
           actions: [
@@ -43,7 +43,10 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
           bottom: const TabBar(
-            tabs: [Tab(text: 'Catatan Saya'), Tab(text: 'Dibagikan')],
+            tabs: [
+              Tab(icon: Icon(Icons.person), text: 'Milik Saya'),
+              Tab(icon: Icon(Icons.group), text: 'Dibagikan'),
+            ],
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
