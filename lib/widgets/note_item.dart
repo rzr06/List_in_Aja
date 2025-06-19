@@ -86,7 +86,6 @@ class NoteItem extends StatelessWidget {
       icon: const Icon(Iconsax.more, color: Colors.grey),
       onSelected: (value) {
         if (value == 'edit') {
-          // Navigasi ke halaman Edit
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => EditNoteScreen(note: note)),
@@ -96,7 +95,6 @@ class NoteItem extends StatelessWidget {
         }
       },
       itemBuilder: (ctx) => [
-        // ADDED: Opsi Edit pada menu
         const PopupMenuItem(
           value: 'edit',
           child: ListTile(

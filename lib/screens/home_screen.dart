@@ -5,7 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/shopping_note.dart';
-import '../widgets/note_item.dart'; // Pastikan import ini benar
+import '../widgets/note_item.dart';
 import 'add_note_screen.dart';
 import 'auth_screen.dart';
 
@@ -118,7 +118,6 @@ class HomeScreen extends StatelessWidget {
             itemCount: notes.length,
             itemBuilder:
                 (_, i) => NoteItem(
-                      // Widget ini sudah diubah
                       note: notes[i],
                       canEdit: isOwner,
                       onDelete: () => dbService.deleteNote(notes[i].id),

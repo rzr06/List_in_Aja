@@ -123,8 +123,8 @@ class ViewNoteScreen extends StatelessWidget {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              Navigator.pop(ctx); // Close dialog
-              Navigator.pop(context); // Go back from view screen
+              Navigator.pop(ctx);
+              Navigator.pop(context);
               Provider.of<DatabaseService>(context, listen: false).deleteNote(noteId);
             },
             child: const Text('Hapus'),

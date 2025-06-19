@@ -14,8 +14,6 @@ class DatabaseService {
     List<String> sharedWith = const [],
     required List<bool> checkedItems,
   }) async {
-    // BUG FIX: Lakukan validasi waktu SEBELUM menyimpan ke database.
-    // Kita tambahkan jeda 10 detik untuk toleransi jika proses sedikit lambat.
     if (reminder != null &&
         reminder.isBefore(
           DateTime.now().subtract(const Duration(seconds: 10)),
@@ -34,11 +32,8 @@ class DatabaseService {
       checkedItems: checkedItems,
     );
 
-    // Sekarang aman untuk menyimpan karena sudah melewati validasi.
     await noteRef.set(note.toMap());
 
-    // Jadwalkan notifikasi jika ada reminder.
-    // Validasi di notification_service akan berfungsi sebagai lapisan pengaman kedua.
     if (reminder != null) {
       await _notificationService.scheduleNotification(
         id: note.id.hashCode,
@@ -76,16 +71,14 @@ class DatabaseService {
       await _notificationService.cancelNotification(noteId.hashCode);
     }
 
-    // Sekarang aman untuk memperbarui karena sudah melewati validasi.
     await noteRef.update({
       'title': title,
       'description': description,
       'reminder': reminder,
       'sharedWith': sharedWith,
-      'checkedItems': checkedItems, // Pastikan checkedItems juga diupdate
+      'checkedItems': checkedItems,
     });
 
-    // Jadwalkan notifikasi baru jika ada reminder baru.
     if (reminder != null) {
       await _notificationService.scheduleNotification(
         id: noteId.hashCode,
@@ -97,7 +90,6 @@ class DatabaseService {
   }
 
   Future<void> deleteNote(String noteId) async {
-    // Batalkan notifikasi saat hapus
     final noteSnapshot = await _firestore.collection('notes').doc(noteId).get();
     if (noteSnapshot.exists) {
       await _notificationService.cancelNotification(noteId.hashCode);
